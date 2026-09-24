@@ -1,39 +1,54 @@
-version: '3.8'
+name: nginx-practice 
 
 services:
-  # FastAPI Backend Service
+  # FastAPI Backend Service (Internal Only)
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: app_backend
+    container_name: nginx_practice_backend
+    image: nginx_practice_backend
     restart: always
-    # Exposed internally only inside the docker network
+    networks:
+      - app_net  # Only attached to internal network
 
   # Frontend Build Service (Runs once to build static assets)
   frontend-builder:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: app_frontend_builder
+    container_name: nginx_practice_frontend_builder
+    image: nginx_practice_frontend_builder
     volumes:
       - frontend-assets:/public_html
+    networks:
+      - app_net  # Only attached to internal network
 
-  # Nginx Web Server / Reverse Proxy
+  # Nginx Reverse Proxy (Gateway)
   nginx:
     build:
       context: ./nginx
       dockerfile: Dockerfile
-    container_name: app_nginx
+    container_name: nginx_practice_nginx
+    image: nginx_practice_nginx
     restart: always
     ports:
-      - "80:80"  # Expose port 80 to host/corporate network
+      - "80:80"
     volumes:
       - frontend-assets:/var/www/html/frontend:ro
     depends_on:
       - backend
       - frontend-builder
+    networks:
+      - test_my_cloudflare_net  # Connects to Cloudflare Tunnel
+      - app_net                 # Connects to backend
 
 volumes:
   frontend-assets:
 
+networks:
+  test_my_cloudflare_net:
+    name: test_my_cloudflare_net
+    external: true
+  app_net:
+    driver: bridge
